@@ -1,52 +1,51 @@
 import cv2
+import os
+import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+from string import ascii_letters
+import textwrap
 
-# with ideas from:
-# http://www.learnopencv.com/filling-holes-in-an-image-using-opencv-python-c/
-# http://stackoverflow.com/questions/10316057/filling-holes-inside-a-binary-object
-print(cv2.__file__)
+from transformers import pipeline
 
-# Read image
-im_in = cv2.imread("gIEXY.png", cv2.IMREAD_GRAYSCALE);
+from bubble_detector import detect_bubbles
+from utils import find_textbox, get_font_size
+#from translator import translate
 
-# Threshold.
-# Set values equal to or above 200 to 0.
-# Set values below 200 to 255.
+if __name__ == "__main__":
+    languages = 'jp-en'
+    input_image = "input/jp_row.jpg"
+    output_image = f'output/{os.path.basename(input_image)}'
+    if languages == 'jp-en':
+        #japanese
+        ocr_pipe = pipeline("image-to-text", model="models/kha-white/manga-ocr-base")
+        translation_pipe = pipeline("translation", model="models/Helsinki-NLP/opus-mt-ja-en")
+        font_path = "assets/manga.ttf"
+    image = cv2.imread(input_image)
+    boxes = detect_bubbles(input_image)
+    balloons = 1
+    for x,y,w,h in boxes.xywh.numpy():
+        xmin, xmax = int(x - w/2), int(x + w/2)
+        ymin, ymax = int(y - h/2), int(y + h/2)
+        cropped_image = image[ymin:ymax,xmin:xmax]
+        cropped_pil_image = Image.fromarray(cropped_image)
+        generated_text = ocr_pipe(cropped_pil_image)[0]['generated_text']
+        translated_text = translation_pipe(generated_text)[0]['translation_text']
+        print(generated_text,translated_text)
+        window_x,window_y,window_w,window_h = find_textbox(cropped_image)
+        wrapped,font_size = get_font_size((window_w,window_h),translated_text,font_path)
+        draw = ImageDraw.Draw(cropped_pil_image)
+        draw.rectangle((window_x,window_y,window_x+window_w,window_y+window_h), fill = "white")
+        font = ImageFont.truetype(font_path, font_size)
 
-th, im_th = cv2.threshold(im_in, 200, 255, cv2.THRESH_BINARY_INV);
+        x_center = int(window_w / 2) + window_x
+        y_center = int(window_h/ 2) + window_y
 
-# Copy the thresholded image.
-im_floodfill = im_th.copy()
+        draw.text((x_center, y_center), wrapped, font=font, fill="black", anchor="mm",align='center')
+        cropped_pil_image.save(f"temp/{balloons}c.png")
+        image[ymin:ymax,xmin:xmax] = cv2.cvtColor(np.array(cropped_pil_image), cv2.COLOR_RGB2BGR)
+        balloons += 1
+    output = image
+    cv2.imwrite(output_image,output)
+    print(output_image)
 
-# Mask used to flood filling.
-# Notice the size needs to be 2 pixels than the image.
-h, w = im_th.shape[:2]
-mask = np.zeros((h+2, w+2), np.uint8)
-
-# Floodfill from points inside baloons
-cv2.floodFill(im_floodfill, mask, (80,400), 128);
-cv2.floodFill(im_floodfill, mask, (610,90), 128);
-
-# Invert floodfilled image
-im_floodfill_inv = cv2.bitwise_not(im_floodfill)
-
-# Combine the two images to get the foreground
-im_out = im_th | im_floodfill_inv
-
-# Create binary image from segments with holes
-th, im_th2 = cv2.threshold(im_out, 130, 255, cv2.THRESH_BINARY)
-
-# Create contours to fill holes
-im_th3 = cv2.bitwise_not(im_th2)
-contour,hier = cv2.findContours(im_th3,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
-
-for cnt in contour:
-    cv2.drawContours(im_th3,[cnt],0,255,-1)
-
-segm = cv2.bitwise_not(im_th3)
-
-
-# Display image
-cv2.imshow("Original", im_in)
-cv2.imshow("Segmented", segm)
-cv2.waitKey(0)
