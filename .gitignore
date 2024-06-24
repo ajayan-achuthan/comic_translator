@@ -2,3 +2,5 @@ models/
 train/
 temp/
 .vscode/
+waste.py
+*.ipynb

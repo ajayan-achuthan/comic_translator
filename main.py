@@ -1,51 +1,31 @@
-import cv2
 import os
-import matplotlib.pyplot as plt
-import numpy as np
-from PIL import Image, ImageDraw, ImageFont
-from string import ascii_letters
-import textwrap
+import argparse
 
-from transformers import pipeline
-
-from bubble_detector import detect_bubbles
-from utils import find_textbox, get_font_size
-#from translator import translate
+from translator import translator
 
 if __name__ == "__main__":
-    languages = 'jp-en'
-    input_image = "input/jp_row.jpg"
-    output_image = f'output/{os.path.basename(input_image)}'
-    if languages == 'jp-en':
+    parser = argparse.ArgumentParser(description='This Manga Translator is a tool that utilizes various resources and models to extract text from manga images, translate the text. The following libraries and models are used in this translator:')
+    
+    parser.add_argument('-l', '--languages', nargs='+', choices=[['jp', 'en'], ['en', 'ml']], default=['jp', 'en'], help='List of languages for translation (e.g. en es). Default is English to Spanish.')
+    parser.add_argument('-i', '--input_file', type=str, required=True, help='Path to input file for OCR.')
+    parser.add_argument('-o', '--output_file', type=str, help='Path to output file for translated text.')
+    parser.add_argument('--ocr_model', type=str, default='default', help='OCR model to use for text extraction. Default is “default”.')
+    parser.add_argument('--translator_model', type=str, default='models/Helsinki-NLP/opus-mt-ja-en', help='Translator model to use for language translation. Default is “default”.')
+
+    args = parser.parse_args()
+    
+    if args.output_file is None:
+        file_name, file_ext = args.input_file.rsplit('.', 1)
+        args.output_file = f'{file_name}_converted.{file_ext}'
+    if args.languages == ['jp', 'en']:
         #japanese
-        ocr_pipe = pipeline("image-to-text", model="models/kha-white/manga-ocr-base")
-        translation_pipe = pipeline("translation", model="models/Helsinki-NLP/opus-mt-ja-en")
-        font_path = "assets/manga.ttf"
-    image = cv2.imread(input_image)
-    boxes = detect_bubbles(input_image)
-    balloons = 1
-    for x,y,w,h in boxes.xywh.numpy():
-        xmin, xmax = int(x - w/2), int(x + w/2)
-        ymin, ymax = int(y - h/2), int(y + h/2)
-        cropped_image = image[ymin:ymax,xmin:xmax]
-        cropped_pil_image = Image.fromarray(cropped_image)
-        generated_text = ocr_pipe(cropped_pil_image)[0]['generated_text']
-        translated_text = translation_pipe(generated_text)[0]['translation_text']
-        print(generated_text,translated_text)
-        window_x,window_y,window_w,window_h = find_textbox(cropped_image)
-        wrapped,font_size = get_font_size((window_w,window_h),translated_text,font_path)
-        draw = ImageDraw.Draw(cropped_pil_image)
-        draw.rectangle((window_x,window_y,window_x+window_w,window_y+window_h), fill = "white")
-        font = ImageFont.truetype(font_path, font_size)
-
-        x_center = int(window_w / 2) + window_x
-        y_center = int(window_h/ 2) + window_y
-
-        draw.text((x_center, y_center), wrapped, font=font, fill="black", anchor="mm",align='center')
-        cropped_pil_image.save(f"temp/{balloons}c.png")
-        image[ymin:ymax,xmin:xmax] = cv2.cvtColor(np.array(cropped_pil_image), cv2.COLOR_RGB2BGR)
-        balloons += 1
-    output = image
-    cv2.imwrite(output_image,output)
-    print(output_image)
+        if args.ocr_model == 'default':
+            ocr_pipeline = "models/kha-white/manga-ocr-base"
+            translation_pipe = "models/Helsinki-NLP/opus-mt-ja-en"
+    translator_pipeline = translator(languages = args.languages, 
+                                     input_file = args.input_file, 
+                                     output_file = args.output_file, 
+                                     ocr_pipeline = ocr_pipeline, 
+                                     translation_pipeline = translation_pipe)
+    translator_pipeline.translate()
 
