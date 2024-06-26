@@ -14,7 +14,9 @@ from transformers import pipeline
 from bubble_detector import detect_bubbles
 from utils import find_textbox, get_font_size
 #from translator import translate
-
+class veruthe:
+    def __init__(self):
+        self.nice =0
 class translator:
     def __init__(self, languages, input_file, output_file, ocr_pipeline, translation_pipeline):
         self.languages = languages
@@ -24,7 +26,6 @@ class translator:
         self.translation_pipe = pipeline("translation", model=translation_pipeline)
         self.font_path = "assets/manga.ttf"       
         
-    # def translate_image(self,input_image):
     def translate_image(self,image):
         boxes = detect_bubbles(image)
         balloons = 1
