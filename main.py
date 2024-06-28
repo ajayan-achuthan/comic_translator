@@ -25,7 +25,6 @@ if __name__ == "__main__":
     translator_pipeline = translator(languages = args.languages, 
                                      input_file = args.input_file, 
                                      output_file = args.output_file, 
-                                     ocr_pipeline = ocr_pipeline, 
-                                     translation_pipeline = translation_pipe)
+                                     ocr_pipename = ocr_pipeline, 
+                                     translation_pipename = translation_pipe)
     translator_pipeline.translate()
-
