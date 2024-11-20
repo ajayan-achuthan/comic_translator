@@ -1,0 +1,9 @@
+default_models:
+  jp_to_en:
+    bubble_detector: "models/comic-speech-bubble-detector.pt"
+    ocr: "models/kha-white/manga-ocr-base"
+    translation: "models/Helsinki-NLP/opus-mt-ja-en"
+  en_to_ml:
+    bubble_detector: "models/comic-speech-bubble-detector.pt"
+    ocr: "models/kha-white/manga-ocr-base"
+    translation: "models/Helsinki-NLP/opus-mt-en-ml"
